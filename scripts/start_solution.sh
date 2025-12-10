@@ -2,7 +2,7 @@
 
 echo "=== Iniciando Solução IMPORTAÚ Open Finance ==="
 
-cd /home/ubuntu/environment/aidev/openfinance/importau/infra/docker-compose/singlenode
+cd importau/infra/docker-compose/singlenode
 
 echo "Parando containers existentes..."
 docker-compose down
