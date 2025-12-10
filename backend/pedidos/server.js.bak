@@ -850,29 +850,11 @@ if (require.main === module) {
 module.exports = { app, PedidoService, PedidoRepository };
 
 // Endpoint de compatibilidade para testes
-
-// Endpoint de estatísticas
 app.get('/pedidos/stats', async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT 
-        COUNT(*) as total,
-        COUNT(CASE WHEN status = 'PENDENTE' THEN 1 END) as pendentes,
-        COUNT(CASE WHEN status = 'EM_TRANSITO' THEN 1 END) as em_transito,
-        COUNT(CASE WHEN status = 'ENTREGUE' THEN 1 END) as entregues,
-        COUNT(CASE WHEN status = 'CANCELADO' THEN 1 END) as cancelados,
-        SUM(valor_total_brl) as valor_total
-      FROM pedidos
-    `);
-    res.json(result.rows[0]);
+    const stats = await pedidoService.obterEstatisticas();
+    res.json(stats);
   } catch (error) {
-    console.error('Erro ao obter estatísticas:', error);
     res.status(500).json({ error: error.message });
   }
-});
-
-// Iniciar servidor
-const PORT = process.env.PORT || 8002;
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
 });
