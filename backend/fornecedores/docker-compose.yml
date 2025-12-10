@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Banco de dados PostgreSQL para o microsserviço de fornecedores
+  fornecedores-db:
+    image: postgres:15-alpine
+    container_name: fornecedores-db
+    environment:
+      POSTGRES_DB: fornecedores_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - fornecedores_db_data:/var/lib/postgresql/data
+    networks:
+      - fornecedores-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Microsserviço de Fornecedores
+  fornecedores-service:
+    image: fornecedores-service:1.0.0
+    container_name: fornecedores-service
+    environment:
+      DB_HOST: fornecedores-db
+      DB_PORT: 5432
+      DB_NAME: fornecedores_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      PORT: 8084
+      SHOW_SQL: true
+      LOG_LEVEL: INFO
+    ports:
+      - "8084:8084"
+    depends_on:
+      fornecedores-db:
+        condition: service_healthy
+    networks:
+      - fornecedores-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8084/api/v1/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  fornecedores_db_data:
+
+networks:
+  fornecedores-network:
+    driver: bridge

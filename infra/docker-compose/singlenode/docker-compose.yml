@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  # Banco de dados PostgreSQL para produtos
+  produtos-db:
+    image: postgres:15-alpine
+    container_name: produtos-db
+    environment:
+      POSTGRES_DB: produtos_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - produtos_db_data:/var/lib/postgresql/data
+    networks:
+      - importau-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Banco de dados PostgreSQL para pedidos
+  pedidos-db:
+    image: postgres:15-alpine
+    container_name: pedidos-db
+    environment:
+      POSTGRES_DB: pedidos_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pedidos_db_data:/var/lib/postgresql/data
+    networks:
+      - importau-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Microsserviço de Produtos
+  produtos-service:
+    build:
+      context: ../../../backend/produtos
+      dockerfile: Dockerfile
+    container_name: produtos-service
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@produtos-db:5432/produtos_db
+      HOST: 0.0.0.0
+      PORT: 8001
+    ports:
+      - "8001:8001"
+    depends_on:
+      produtos-db:
+        condition: service_healthy
+    networks:
+      - importau-network
+    volumes:
+      - /home/ubuntu/environment/aidev/openfinance/csv_exports:/app/csv_exports
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Microsserviço de Pedidos
+  pedidos-service:
+    build:
+      context: ../../../backend/pedidos
+      dockerfile: Dockerfile
+    container_name: pedidos-service
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@pedidos-db:5432/pedidos_db
+      HOST: 0.0.0.0
+      PORT: 8002
+    ports:
+      - "8002:8002"
+    depends_on:
+      pedidos-db:
+        condition: service_healthy
+    networks:
+      - importau-network
+    volumes:
+      - /home/ubuntu/environment/aidev/openfinance/csv_exports:/app/csv_exports
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  produtos_db_data:
+  pedidos_db_data:
+
+networks:
+  importau-network:
+    driver: bridge

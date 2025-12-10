@@ -1,0 +1,31 @@
+produto_id,nome_produto,categoria,subcategoria,fornecedor_id,preco_unitario_brl,moeda_origem,preco_origem,unidade_medida,peso_kg,estoque_atual,estoque_minimo,lead_time_dias,origem_fabricacao
+PROD001,Processador Intel i7,Tecnologia,Hardware,FORN001,2500.00,BRL,2500.00,UN,0.5,150,50,15,Brasil
+PROD002,Memória RAM 16GB DDR4,Tecnologia,Hardware,FORN006,450.00,USD,85.00,UN,0.2,300,100,45,Estados Unidos
+PROD003,SSD 1TB NVMe,Tecnologia,Armazenamento,FORN002,580.00,BRL,580.00,UN,0.1,200,80,30,Brasil
+PROD004,Placa Mãe ATX,Tecnologia,Hardware,FORN010,1200.00,USD,220.00,UN,1.2,80,30,60,China
+PROD005,Cabo HDMI 2m,Eletrônicos,Cabos,FORN003,35.00,BRL,35.00,UN,0.3,500,150,10,Brasil
+PROD006,Motor Elétrico 5HP,Industrial,Motores,FORN004,3200.00,BRL,3200.00,UN,25.0,40,15,45,Brasil
+PROD007,Sensor de Temperatura,Industrial,Sensores,FORN006,280.00,USD,52.00,UN,0.4,180,60,30,Estados Unidos
+PROD008,Válvula Solenoide 1/2,Industrial,Válvulas,FORN007,420.00,BRL,420.00,UN,1.8,120,40,20,Brasil
+PROD009,Pneu 205/55 R16,Autopeças,Pneus,FORN008,380.00,BRL,380.00,UN,9.5,250,80,15,Brasil
+PROD010,Filtro de Óleo Automotivo,Autopeças,Filtros,FORN022,45.00,JPY,3800.00,UN,0.5,600,200,40,Japão
+PROD011,Tecido Algodão 1m,Têxtil,Tecidos,FORN009,28.00,BRL,28.00,M,0.3,1500,500,20,Brasil
+PROD012,Parafuso M6x20mm,Industrial,Fixação,FORN014,0.85,BRL,0.85,UN,0.02,10000,3000,25,Brasil
+PROD013,Notebook Dell 15,Tecnologia,Computadores,FORN006,4500.00,USD,850.00,UN,2.1,60,20,60,Estados Unidos
+PROD014,Impressora Multifuncional,Tecnologia,Periféricos,FORN016,1800.00,USD,340.00,UN,8.5,45,15,50,Coreia do Sul
+PROD015,Tinta Industrial 5L,Químicos,Tintas,FORN007,180.00,BRL,180.00,L,5.2,300,100,15,Brasil
+PROD016,Resina Epóxi 1kg,Químicos,Resinas,FORN007,95.00,BRL,95.00,KG,1.0,400,150,15,Brasil
+PROD017,Papel A4 500 folhas,Papel e Celulose,Papel,FORN015,32.00,BRL,32.00,PCT,2.5,800,250,10,Brasil
+PROD018,Embalagem Plástica 100un,Embalagens,Plástico,FORN019,85.00,BRL,85.00,PCT,1.8,350,120,15,Brasil
+PROD019,Chapa de Aço 1m²,Metalúrgica,Chapas,FORN021,145.00,BRL,145.00,M2,7.8,200,60,30,Brasil
+PROD020,Tubo PVC 50mm 6m,Plásticos,Tubos,FORN013,68.00,BRL,68.00,UN,3.2,180,60,20,Brasil
+PROD021,Fertilizante NPK 50kg,Agrícola,Fertilizantes,FORN011,220.00,BRL,220.00,SC,50.0,100,30,25,Brasil
+PROD022,Semente Milho Híbrido,Agrícola,Sementes,FORN011,380.00,BRL,380.00,SC,20.0,80,25,30,Brasil
+PROD023,Madeira Pinus 3m,Madeira,Madeira Serrada,FORN023,120.00,BRL,120.00,M3,45.0,150,40,20,Brasil
+PROD024,Rolamento SKF 6205,Industrial,Rolamentos,FORN022,85.00,JPY,7200.00,UN,0.3,250,80,45,Japão
+PROD025,Switch Gigabit 24 portas,Tecnologia,Rede,FORN012,2800.00,EUR,550.00,UN,2.8,35,10,75,Alemanha
+PROD026,Minério Ferro ton,Mineração,Minério,FORN027,580.00,BRL,580.00,TON,1000.0,500,100,40,Brasil
+PROD027,Compressor Ar 10HP,Industrial,Compressores,FORN004,8500.00,BRL,8500.00,UN,180.0,20,5,60,Brasil
+PROD028,LED Strip 5m RGB,Eletrônicos,Iluminação,FORN010,125.00,USD,23.00,UN,0.4,280,90,55,China
+PROD029,Transformador 220V,Eletrônicos,Transformadores,FORN003,340.00,BRL,340.00,UN,4.5,90,30,25,Brasil
+PROD030,Bateria Lítio 12V 100Ah,Eletrônicos,Baterias,FORN016,1850.00,USD,350.00,UN,12.5,55,15,65,Coreia do Sul

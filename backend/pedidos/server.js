@@ -1,0 +1,850 @@
+/**
+ * Microsserviço de Pedidos - IMPORTAÚ Open Finance
+ * Implementa arquitetura hexagonal com Node.js/Express
+ */
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
+const { Pool } = require('pg');
+const fs = require('fs');
+const csv = require('csv-parser');
+const { v4: uuidv4 } = require('uuid');
+
+// Configurações via variáveis de ambiente
+const PORT = process.env.PORT || 8002;
+const HOST = process.env.HOST || '0.0.0.0';
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5433/pedidos_db';
+
+// Configuração do banco de dados
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+});
+
+// Entity - Modelo de dados
+class PedidoEntity {
+  constructor(data) {
+    this.id = data.id || uuidv4();
+    this.pedido_id = data.pedido_id;
+    this.data_pedido = data.data_pedido;
+    this.fornecedor_id = data.fornecedor_id;
+    this.valor_total_brl = parseFloat(data.valor_total_brl);
+    this.status = data.status || 'PENDENTE';
+    this.tipo_pagamento = data.tipo_pagamento;
+    this.prazo_dias = parseInt(data.prazo_dias) || 30;
+    this.data_entrega_prevista = data.data_entrega_prevista;
+    this.usuario_criacao = data.usuario_criacao;
+    this.observacoes = data.observacoes || '';
+    this.created_at = data.created_at || new Date();
+    this.updated_at = data.updated_at || new Date();
+  }
+}
+
+// Entity - Modelo de dados para Item de Pedido
+class ItemPedidoEntity {
+  constructor(data) {
+    this.id = data.id || uuidv4();
+    this.item_id = data.item_id;
+    this.pedido_id = data.pedido_id;
+    this.produto_id = data.produto_id;
+    this.quantidade = parseInt(data.quantidade);
+    this.preco_unitario = parseFloat(data.preco_unitario);
+    this.desconto_percentual = parseFloat(data.desconto_percentual) || 0;
+    this.valor_total_item = parseFloat(data.valor_total_item);
+    this.data_inclusao = data.data_inclusao;
+    this.observacoes = data.observacoes || '';
+    this.created_at = data.created_at || new Date();
+  }
+}
+
+// Repository (Data Layer)
+class PedidoRepository {
+  async init() {
+    // Cria tabelas se não existirem
+    const createTablesQuery = `
+      CREATE TABLE IF NOT EXISTS pedidos (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        pedido_id VARCHAR(50) UNIQUE NOT NULL,
+        data_pedido DATE NOT NULL,
+        fornecedor_id VARCHAR(50) NOT NULL,
+        valor_total_brl DECIMAL(15,2) NOT NULL,
+        status VARCHAR(20) DEFAULT 'PENDENTE',
+        tipo_pagamento VARCHAR(20),
+        prazo_dias INTEGER DEFAULT 30,
+        data_entrega_prevista DATE,
+        usuario_criacao VARCHAR(100),
+        observacoes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      CREATE TABLE IF NOT EXISTS itens_pedido (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        item_id VARCHAR(50) UNIQUE NOT NULL,
+        pedido_id VARCHAR(50) NOT NULL,
+        produto_id VARCHAR(50) NOT NULL,
+        quantidade INTEGER NOT NULL,
+        preco_unitario DECIMAL(15,2) NOT NULL,
+        desconto_percentual DECIMAL(5,2) DEFAULT 0,
+        valor_total_item DECIMAL(15,2) NOT NULL,
+        data_inclusao DATE NOT NULL,
+        observacoes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (pedido_id) REFERENCES pedidos(pedido_id) ON DELETE CASCADE
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_pedidos_status ON pedidos(status);
+      CREATE INDEX IF NOT EXISTS idx_pedidos_fornecedor ON pedidos(fornecedor_id);
+      CREATE INDEX IF NOT EXISTS idx_itens_pedido_pedido ON itens_pedido(pedido_id);
+      CREATE INDEX IF NOT EXISTS idx_itens_pedido_produto ON itens_pedido(produto_id);
+    `;
+    
+    await pool.query(createTablesQuery);
+  }
+
+  async findAll(filters = {}) {
+    let query = 'SELECT * FROM pedidos WHERE 1=1';
+    const params = [];
+    let paramCount = 0;
+
+    if (filters.status) {
+      paramCount++;
+      query += ` AND status = $${paramCount}`;
+      params.push(filters.status);
+    }
+
+    if (filters.fornecedor_id) {
+      paramCount++;
+      query += ` AND fornecedor_id = $${paramCount}`;
+      params.push(filters.fornecedor_id);
+    }
+
+    query += ' ORDER BY created_at DESC';
+    
+    if (filters.limit) {
+      paramCount++;
+      query += ` LIMIT $${paramCount}`;
+      params.push(filters.limit);
+    }
+
+    if (filters.offset) {
+      paramCount++;
+      query += ` OFFSET $${paramCount}`;
+      params.push(filters.offset);
+    }
+
+    const result = await pool.query(query, params);
+    return result.rows;
+  }
+
+  async findById(id) {
+    const result = await pool.query('SELECT * FROM pedidos WHERE id = $1', [id]);
+    return result.rows[0];
+  }
+
+  async findByPedidoId(pedidoId) {
+    const result = await pool.query('SELECT * FROM pedidos WHERE pedido_id = $1', [pedidoId]);
+    return result.rows[0];
+  }
+
+  async create(pedido) {
+    const entity = new PedidoEntity(pedido);
+    const query = `
+      INSERT INTO pedidos (
+        id, pedido_id, data_pedido, fornecedor_id, valor_total_brl,
+        status, tipo_pagamento, prazo_dias, data_entrega_prevista,
+        usuario_criacao, observacoes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING *
+    `;
+    
+    const values = [
+      entity.id, entity.pedido_id, entity.data_pedido, entity.fornecedor_id,
+      entity.valor_total_brl, entity.status, entity.tipo_pagamento,
+      entity.prazo_dias, entity.data_entrega_prevista, entity.usuario_criacao,
+      entity.observacoes
+    ];
+
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
+
+  async update(id, updates) {
+    const fields = [];
+    const values = [];
+    let paramCount = 0;
+
+    Object.keys(updates).forEach(key => {
+      if (updates[key] !== undefined) {
+        paramCount++;
+        fields.push(`${key} = $${paramCount}`);
+        values.push(updates[key]);
+      }
+    });
+
+    if (fields.length === 0) return null;
+
+    paramCount++;
+    fields.push(`updated_at = $${paramCount}`);
+    values.push(new Date());
+
+    paramCount++;
+    values.push(id);
+
+    const query = `UPDATE pedidos SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
+
+  async delete(id) {
+    const result = await pool.query('DELETE FROM pedidos WHERE id = $1 RETURNING *', [id]);
+    return result.rows[0];
+  }
+
+  // Métodos para Itens de Pedido
+  async findItensByPedidoId(pedidoId) {
+    const result = await pool.query(
+      'SELECT * FROM itens_pedido WHERE pedido_id = $1 ORDER BY created_at',
+      [pedidoId]
+    );
+    return result.rows;
+  }
+
+  async findItemById(id) {
+    const result = await pool.query('SELECT * FROM itens_pedido WHERE id = $1', [id]);
+    return result.rows[0];
+  }
+
+  async createItem(item) {
+    const entity = new ItemPedidoEntity(item);
+    const query = `
+      INSERT INTO itens_pedido (
+        id, item_id, pedido_id, produto_id, quantidade, preco_unitario,
+        desconto_percentual, valor_total_item, data_inclusao, observacoes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *
+    `;
+    
+    const values = [
+      entity.id, entity.item_id, entity.pedido_id, entity.produto_id,
+      entity.quantidade, entity.preco_unitario, entity.desconto_percentual,
+      entity.valor_total_item, entity.data_inclusao, entity.observacoes
+    ];
+
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
+
+  async deleteItem(id) {
+    const result = await pool.query('DELETE FROM itens_pedido WHERE id = $1 RETURNING *', [id]);
+    return result.rows[0];
+  }
+}
+
+// Service (Business Layer)
+class PedidoService {
+  constructor(repository) {
+    this.repository = repository;
+  }
+
+  async listarPedidos(filters = {}) {
+    return await this.repository.findAll(filters);
+  }
+
+  async obterPedido(id) {
+    const pedido = await this.repository.findById(id);
+    if (!pedido) {
+      throw new Error('Pedido não encontrado');
+    }
+    return pedido;
+  }
+
+  async criarPedido(dadosPedido) {
+    // Validação de negócio: pedido_id único
+    const existente = await this.repository.findByPedidoId(dadosPedido.pedido_id);
+    if (existente) {
+      throw new Error('Código do pedido já existe');
+    }
+
+    // Validação de valor
+    if (dadosPedido.valor_total_brl <= 0) {
+      throw new Error('Valor do pedido deve ser maior que zero');
+    }
+
+    return await this.repository.create(dadosPedido);
+  }
+
+  async atualizarPedido(id, updates) {
+    const pedido = await this.repository.update(id, updates);
+    if (!pedido) {
+      throw new Error('Pedido não encontrado');
+    }
+    return pedido;
+  }
+
+  async excluirPedido(id) {
+    const pedido = await this.repository.delete(id);
+    if (!pedido) {
+      throw new Error('Pedido não encontrado');
+    }
+    return { message: 'Pedido excluído com sucesso' };
+  }
+
+  async obterEstatisticas() {
+    const stats = await pool.query(`
+      SELECT 
+        status,
+        COUNT(*) as quantidade,
+        SUM(valor_total_brl) as valor_total
+      FROM pedidos 
+      GROUP BY status
+    `);
+    return stats.rows;
+  }
+
+  // Métodos para Itens de Pedido
+  async listarItensPedido(pedidoId) {
+    return await this.repository.findItensByPedidoId(pedidoId);
+  }
+
+  async obterItemPedido(id) {
+    const item = await this.repository.findItemById(id);
+    if (!item) {
+      throw new Error('Item não encontrado');
+    }
+    return item;
+  }
+
+  async criarItemPedido(dadosItem) {
+    // Validação: pedido deve existir
+    const pedido = await this.repository.findByPedidoId(dadosItem.pedido_id);
+    if (!pedido) {
+      throw new Error('Pedido não encontrado');
+    }
+
+    // Validação de quantidade e preço
+    if (dadosItem.quantidade <= 0) {
+      throw new Error('Quantidade deve ser maior que zero');
+    }
+    if (dadosItem.preco_unitario <= 0) {
+      throw new Error('Preço unitário deve ser maior que zero');
+    }
+
+    return await this.repository.createItem(dadosItem);
+  }
+
+  async excluirItemPedido(id) {
+    const item = await this.repository.deleteItem(id);
+    if (!item) {
+      throw new Error('Item não encontrado');
+    }
+    return { message: 'Item excluído com sucesso' };
+  }
+}
+
+// Configuração do Swagger
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Microsserviço de Pedidos',
+      version: '1.0.0',
+      description: 'API para gestão de pedidos - IMPORTAÚ Open Finance',
+    },
+    servers: [
+      {
+        url: `http://localhost:${PORT}`,
+        description: 'Servidor de desenvolvimento',
+      },
+    ],
+  },
+  apis: ['./server.js'],
+};
+
+const specs = swaggerJsdoc(swaggerOptions);
+
+// Inicialização do Express
+const app = express();
+
+// Middlewares
+app.use(helmet({
+  contentSecurityPolicy: false,
+  hsts: false
+}));
+app.use(cors());
+app.use(express.json());
+
+// Swagger UI
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(specs));
+
+// Instâncias dos serviços
+const pedidoRepository = new PedidoRepository();
+const pedidoService = new PedidoService(pedidoRepository);
+
+/**
+ * @swagger
+ * /status:
+ *   get:
+ *     summary: Verificação de saúde do serviço
+ *     responses:
+ *       200:
+ *         description: Serviço saudável
+ */
+app.get('/status', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'pedidos',
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
+ * @swagger
+ * /pedidos:
+ *   get:
+ *     summary: Lista pedidos
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: fornecedor_id
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Lista de pedidos
+ */
+app.get('/pedidos', async (req, res) => {
+  try {
+    const filters = {
+      status: req.query.status,
+      fornecedor_id: req.query.fornecedor_id,
+      limit: req.query.limit ? parseInt(req.query.limit) : 100,
+      offset: req.query.offset ? parseInt(req.query.offset) : 0
+    };
+
+    const pedidos = await pedidoService.listarPedidos(filters);
+    res.json(pedidos);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /pedidos/{id}:
+ *   get:
+ *     summary: Obtém pedido por ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Dados do pedido
+ *       404:
+ *         description: Pedido não encontrado
+ */
+app.get('/pedidos/:id', async (req, res) => {
+  try {
+    const pedido = await pedidoService.obterPedido(req.params.id);
+    res.json(pedido);
+  } catch (error) {
+    if (error.message === 'Pedido não encontrado') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+/**
+ * @swagger
+ * /pedidos:
+ *   post:
+ *     summary: Cria novo pedido
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - pedido_id
+ *               - data_pedido
+ *               - fornecedor_id
+ *               - valor_total_brl
+ *             properties:
+ *               pedido_id:
+ *                 type: string
+ *               data_pedido:
+ *                 type: string
+ *                 format: date
+ *               fornecedor_id:
+ *                 type: string
+ *               valor_total_brl:
+ *                 type: number
+ *               status:
+ *                 type: string
+ *               tipo_pagamento:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Pedido criado
+ *       400:
+ *         description: Dados inválidos
+ */
+app.post('/pedidos', async (req, res) => {
+  try {
+    const pedido = await pedidoService.criarPedido(req.body);
+    res.status(201).json(pedido);
+  } catch (error) {
+    if (error.message.includes('já existe') || error.message.includes('deve ser maior')) {
+      res.status(400).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+/**
+ * @swagger
+ * /pedidos/{id}:
+ *   put:
+ *     summary: Atualiza pedido
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: Pedido atualizado
+ *       404:
+ *         description: Pedido não encontrado
+ */
+app.put('/pedidos/:id', async (req, res) => {
+  try {
+    const pedido = await pedidoService.atualizarPedido(req.params.id, req.body);
+    res.json(pedido);
+  } catch (error) {
+    if (error.message === 'Pedido não encontrado') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+/**
+ * @swagger
+ * /pedidos/{id}:
+ *   delete:
+ *     summary: Exclui pedido
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Pedido excluído
+ *       404:
+ *         description: Pedido não encontrado
+ */
+app.delete('/pedidos/:id', async (req, res) => {
+  try {
+    const result = await pedidoService.excluirPedido(req.params.id);
+    res.json(result);
+  } catch (error) {
+    if (error.message === 'Pedido não encontrado') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+/**
+ * @swagger
+ * /pedidos/stats/resumo:
+ *   get:
+ *     summary: Estatísticas dos pedidos
+ *     responses:
+ *       200:
+ *         description: Estatísticas por status
+ */
+app.get('/pedidos/stats/resumo', async (req, res) => {
+  try {
+    const stats = await pedidoService.obterEstatisticas();
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ===== ROTAS PARA ITENS DE PEDIDOS =====
+
+/**
+ * @swagger
+ * /pedidos/{pedidoId}/itens:
+ *   get:
+ *     summary: Lista itens de um pedido
+ *     parameters:
+ *       - in: path
+ *         name: pedidoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Lista de itens do pedido
+ */
+app.get('/pedidos/:pedidoId/itens', async (req, res) => {
+  try {
+    const itens = await pedidoService.listarItensPedido(req.params.pedidoId);
+    res.json(itens);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /itens/{id}:
+ *   get:
+ *     summary: Obtém item por ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Dados do item
+ *       404:
+ *         description: Item não encontrado
+ */
+app.get('/itens/:id', async (req, res) => {
+  try {
+    const item = await pedidoService.obterItemPedido(req.params.id);
+    res.json(item);
+  } catch (error) {
+    if (error.message === 'Item não encontrado') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+/**
+ * @swagger
+ * /itens:
+ *   post:
+ *     summary: Cria novo item de pedido
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - item_id
+ *               - pedido_id
+ *               - produto_id
+ *               - quantidade
+ *               - preco_unitario
+ *               - valor_total_item
+ *             properties:
+ *               item_id:
+ *                 type: string
+ *               pedido_id:
+ *                 type: string
+ *               produto_id:
+ *                 type: string
+ *               quantidade:
+ *                 type: integer
+ *               preco_unitario:
+ *                 type: number
+ *               desconto_percentual:
+ *                 type: number
+ *               valor_total_item:
+ *                 type: number
+ *     responses:
+ *       201:
+ *         description: Item criado
+ *       400:
+ *         description: Dados inválidos
+ */
+app.post('/itens', async (req, res) => {
+  try {
+    const item = await pedidoService.criarItemPedido(req.body);
+    res.status(201).json(item);
+  } catch (error) {
+    if (error.message.includes('não encontrado') || error.message.includes('deve ser maior')) {
+      res.status(400).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+/**
+ * @swagger
+ * /itens/{id}:
+ *   delete:
+ *     summary: Exclui item de pedido
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Item excluído
+ *       404:
+ *         description: Item não encontrado
+ */
+app.delete('/itens/:id', async (req, res) => {
+  try {
+    const result = await pedidoService.excluirItemPedido(req.params.id);
+    res.json(result);
+  } catch (error) {
+    if (error.message === 'Item não encontrado') {
+      res.status(404).json({ error: error.message });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
+// Função para carregar dados do CSV
+async function loadCsvData() {
+  try {
+    // Carrega pedidos
+    const existingPedidos = await pool.query('SELECT COUNT(*) FROM pedidos');
+    if (parseInt(existingPedidos.rows[0].count) === 0) {
+      const csvPath = '/app/csv_exports/pedidos.csv';
+      if (fs.existsSync(csvPath)) {
+        const pedidos = [];
+        
+        await new Promise((resolve, reject) => {
+          fs.createReadStream(csvPath)
+            .pipe(csv())
+            .on('data', (row) => pedidos.push(row))
+            .on('end', async () => {
+              try {
+                for (const pedido of pedidos) {
+                  await pedidoRepository.create(pedido);
+                }
+                console.log(`Pedidos carregados: ${pedidos.length}`);
+                resolve();
+              } catch (error) {
+                reject(error);
+              }
+            })
+            .on('error', reject);
+        });
+      }
+    }
+
+    // Carrega itens de pedidos
+    const existingItens = await pool.query('SELECT COUNT(*) FROM itens_pedido');
+    if (parseInt(existingItens.rows[0].count) === 0) {
+      const csvPath = '/app/csv_exports/itens_pedido.csv';
+      if (fs.existsSync(csvPath)) {
+        const itens = [];
+        
+        await new Promise((resolve, reject) => {
+          fs.createReadStream(csvPath)
+            .pipe(csv())
+            .on('data', (row) => itens.push(row))
+            .on('end', async () => {
+              try {
+                for (const item of itens) {
+                  await pedidoRepository.createItem(item);
+                }
+                console.log(`Itens de pedidos carregados: ${itens.length}`);
+                resolve();
+              } catch (error) {
+                console.error('Erro ao inserir item:', error.message);
+                // Continua mesmo com erros
+              }
+            })
+            .on('error', reject);
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao carregar dados do CSV:', error);
+  }
+}
+
+// Inicialização do servidor
+async function startServer() {
+  try {
+    // Inicializa banco de dados
+    await pedidoRepository.init();
+    console.log('Banco de dados inicializado');
+
+    // Carrega dados do CSV
+    await loadCsvData();
+
+    // Inicia servidor
+    app.listen(PORT, HOST, () => {
+      console.log(`Microsserviço de Pedidos rodando em http://${HOST}:${PORT}`);
+      console.log(`Swagger UI disponível em http://${HOST}:${PORT}/docs`);
+    });
+  } catch (error) {
+    console.error('Erro ao iniciar servidor:', error);
+    process.exit(1);
+  }
+}
+
+// Tratamento de erros não capturados
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  await pool.end();
+  process.exit(0);
+});
+
+// Inicia o servidor
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = { app, PedidoService, PedidoRepository };

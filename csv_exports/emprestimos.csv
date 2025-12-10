@@ -1,0 +1,31 @@
+emprestimo_id,data_contratacao,instituicao_financeira,valor_principal_brl,taxa_juros_anual,prazo_meses,valor_parcela_mensal,saldo_devedor,status,finalidade,data_vencimento_proxima,num_parcelas_pagas,usuario_responsavel
+EMP001,2024-01-15,Banco Nacional,500000.00,12.5,36,17850.25,425000.00,ATIVO,Capital de Giro,2024-11-15,10,celso.oliveira
+EMP002,2024-03-20,Banco Comercial,250000.00,10.8,24,12450.80,187500.00,ATIVO,Aquisição de Equipamentos,2024-11-20,8,celso.oliveira
+EMP003,2024-05-10,Financeira Brasil,150000.00,14.2,48,4850.30,138750.00,ATIVO,Expansão,2024-11-10,6,celso.oliveira
+EMP004,2023-06-15,Banco Industrial,800000.00,11.5,60,18240.55,640000.00,ATIVO,Obras e Infraestrutura,2024-11-15,16,celso.oliveira
+EMP005,2024-07-22,BNDES,1200000.00,8.5,84,19850.40,1140000.00,ATIVO,Inovação Tecnológica,2024-11-22,4,celso.oliveira
+EMP006,2024-02-28,Banco Regional,180000.00,13.0,30,7120.45,144000.00,ATIVO,Capital de Giro,2024-11-28,9,celso.oliveira
+EMP007,2023-11-10,Cooperativa Crédito,95000.00,9.8,18,5980.25,31666.67,ATIVO,Importação,2024-11-10,16,celso.oliveira
+EMP008,2024-04-05,Banco Desenvolvimento,450000.00,10.2,48,13550.75,393750.00,ATIVO,Modernização,2024-11-05,7,celso.oliveira
+EMP009,2024-08-15,Fintech Capital,75000.00,15.5,12,6850.90,62500.00,ATIVO,Estoque,2024-11-15,3,celso.oliveira
+EMP010,2022-09-20,Banco Nacional,600000.00,12.0,48,17820.30,300000.00,ATIVO,Aquisição Veículos,2024-11-20,24,celso.oliveira
+EMP011,2024-06-12,Banco Comercial,320000.00,11.8,36,11450.60,280000.00,ATIVO,Marketing e Vendas,2024-11-12,5,celso.oliveira
+EMP012,2023-12-18,Financeira Brasil,220000.00,13.5,24,10980.75,146666.67,ATIVO,Tecnologia,2024-11-18,11,celso.oliveira
+EMP013,2024-09-03,Banco Industrial,550000.00,10.5,60,12850.40,532083.33,ATIVO,Expansão Nacional,2024-11-03,2,celso.oliveira
+EMP014,2024-01-25,BNDES,2000000.00,7.8,120,26540.85,1950000.00,ATIVO,Pesquisa e Desenvolvimento,2024-11-25,10,celso.oliveira
+EMP015,2023-08-14,Banco Regional,280000.00,12.8,30,10850.30,186666.67,ATIVO,Logística,2024-11-14,15,celso.oliveira
+EMP016,2024-10-05,Cooperativa Crédito,120000.00,11.2,24,5780.45,115000.00,ATIVO,Capital de Giro,2024-12-05,1,celso.oliveira
+EMP017,2024-03-08,Banco Desenvolvimento,680000.00,9.5,72,13420.75,623333.33,ATIVO,Automação Industrial,2024-11-08,8,celso.oliveira
+EMP018,2022-05-22,Fintech Capital,85000.00,16.0,12,7850.60,28333.33,ATIVO,Emergencial,2024-11-22,20,celso.oliveira
+EMP019,2024-07-16,Banco Nacional,430000.00,11.0,42,12580.95,395833.33,ATIVO,Novas Unidades,2024-11-16,4,celso.oliveira
+EMP020,2023-10-30,Banco Comercial,190000.00,12.2,18,11450.80,105555.56,ATIVO,Importação Equipamentos,2024-11-30,13,celso.oliveira
+EMP021,2024-04-18,Financeira Brasil,310000.00,13.8,36,11180.65,284166.67,ATIVO,Reestruturação,2024-11-18,7,celso.oliveira
+EMP022,2024-08-28,Banco Industrial,740000.00,10.8,54,17350.40,712962.96,ATIVO,Diversificação,2024-11-28,3,celso.oliveira
+EMP023,2023-07-12,BNDES,1500000.00,8.2,96,22480.55,1343750.00,ATIVO,Sustentabilidade,2024-11-12,15,celso.oliveira
+EMP024,2024-09-20,Banco Regional,210000.00,12.5,27,8950.70,201666.67,ATIVO,E-commerce,2024-11-20,2,celso.oliveira
+EMP025,2024-02-14,Cooperativa Crédito,145000.00,10.5,20,8120.45,123750.00,ATIVO,Treinamento,2024-11-14,9,celso.oliveira
+EMP026,2022-11-05,Banco Desenvolvimento,520000.00,9.8,48,14650.80,325000.00,ATIVO,Certificações,2024-11-05,24,celso.oliveira
+EMP027,2024-10-12,Fintech Capital,98000.00,14.8,15,7280.60,91466.67,ATIVO,Consultoria,2024-12-12,1,celso.oliveira
+EMP028,2024-06-25,Banco Nacional,370000.00,11.5,40,11080.75,342500.00,ATIVO,Infraestrutura TI,2024-11-25,5,celso.oliveira
+EMP029,2023-09-08,Banco Comercial,265000.00,12.0,30,9850.40,176666.67,ATIVO,Frota,2024-11-08,14,celso.oliveira
+EMP030,2024-05-03,Financeira Brasil,180000.00,13.2,24,8720.85,157500.00,ATIVO,Marketing Digital,2024-11-03,6,celso.oliveira

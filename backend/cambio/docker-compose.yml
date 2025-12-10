@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  cambio-db:
+    image: postgres:15-alpine
+    container_name: cambio-db
+    environment:
+      POSTGRES_DB: cambio_db
+      POSTGRES_USER: cambio_user
+      POSTGRES_PASSWORD: cambio_pass
+    ports:
+      - "5437:5432"
+    volumes:
+      - cambio_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cambio_user -d cambio_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cambio-network
+
+  cambio-service:
+    build: .
+    container_name: cambio-service
+    image: cambio-service:1.0.0
+    environment:
+      DATABASE_URL: postgresql://cambio_user:cambio_pass@cambio-db:5432/cambio_db
+      APP_NAME: cambio-service
+      APP_VERSION: 1.0.0
+    ports:
+      - "8086:8086"
+    depends_on:
+      cambio-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8086/api/v1/status')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - cambio-network
+
+volumes:
+  cambio_db_data:
+
+networks:
+  cambio-network:
+    driver: bridge
