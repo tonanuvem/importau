@@ -1,315 +1,146 @@
 package com.importau.steps;
 
 import io.cucumber.java.pt.*;
-import io.cucumber.datatable.DataTable;
-import okhttp3.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
-import org.assertj.core.api.Assertions;
-
-import java.io.IOException;
-import java.util.List;
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.*;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.HashMap;
 
 public class PedidosSteps {
     
-    private static final String BASE_URL = "http://localhost:8002";
-    private final OkHttpClient client = new OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .build();
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    
+    private String baseUrl;
     private Response response;
-    private String pedidoId;
-    private long startTime;
-
-    @Dado("que o microsserviço de pedidos está disponível")
-    public void verificarServicoDisponivel() throws IOException {
-        Request request = new Request.Builder()
-                .url(BASE_URL + "/status")
-                .build();
-        
-        response = client.newCall(request).execute();
-        Assertions.assertThat(response.code()).isEqualTo(200);
+    private Map<String, Object> pedidoData = new HashMap<>();
+    private String pedidoUuid;
+    
+    @Dado("que o microsserviço de pedidos está disponível em {string}")
+    public void configurarBaseUrl(String url) {
+        this.baseUrl = url;
+        RestAssured.baseURI = url;
     }
-
+    
     @Quando("solicito a lista de pedidos")
-    public void solicitarListaPedidos() throws IOException {
-        startTime = System.currentTimeMillis();
-        
-        Request request = new Request.Builder()
-                .url(BASE_URL + "/pedidos")
-                .build();
-        
-        response = client.newCall(request).execute();
+    public void solicitarListaPedidos() {
+        response = RestAssured.get("/pedidos");
+        CommonSteps.setResponse(response);
     }
-
-    @Então("devo receber uma lista de pedidos")
-    public void verificarListaPedidos() throws IOException {
-        String responseBody = response.body().string();
-        JsonNode jsonNode = objectMapper.readTree(responseBody);
-        
-        Assertions.assertThat(jsonNode.isArray()).isTrue();
+    
+    @Então("devo receber uma lista com pelo menos {int} pedido")
+    public void verificarListaNaoVazia(int minimo) {
+        assertTrue(response.jsonPath().getList("$").size() >= minimo);
     }
-
+    
+    @Dado("que existem pedidos cadastrados")
+    public void verificarPedidosExistem() {
+        response = RestAssured.get("/pedidos");
+        assertTrue(response.jsonPath().getList("$").size() > 0);
+    }
+    
+    @Quando("filtro pedidos pelo status {string}")
+    public void filtrarPorStatus(String status) {
+        response = RestAssured.given()
+            .queryParam("status", status)
+            .get("/pedidos");
+        CommonSteps.setResponse(response);
+    }
+    
+    @Então("todos os pedidos devem ter status {string}")
+    public void verificarStatus(String status) {
+        response.then().body("status", everyItem(equalTo(status)));
+    }
+    
     @Dado("que tenho os dados de um novo pedido:")
-    public void definirDadosPedido(DataTable dataTable) {
-        // Os dados serão usados no próximo step
-        List<Map<String, String>> rows = dataTable.asMaps(String.class, String.class);
-        // Armazena dados para uso posterior
+    public void prepararDadosPedido(Map<String, String> dados) {
+        pedidoData.clear();
+        pedidoData.put("pedido_id", dados.get("pedido_id"));
+        pedidoData.put("fornecedor_id", dados.get("fornecedor_id"));
+        pedidoData.put("valor_total_brl", dados.get("valor_total_brl"));
+        pedidoData.put("status", dados.get("status"));
+        pedidoData.put("tipo_pagamento", dados.get("tipo_pagamento"));
+        pedidoData.put("data_pedido", "2025-12-10");
+        pedidoData.put("prazo_dias", 30);
     }
-
+    
     @Quando("crio o pedido")
-    public void criarPedido() throws IOException {
-        String pedidoJson = "{\n" +
-            "    \"pedido_id\": \"PED999\",\n" +
-            "    \"data_pedido\": \"2024-12-10\",\n" +
-            "    \"fornecedor_id\": \"FORN001\",\n" +
-            "    \"valor_total_brl\": 2500.00,\n" +
-            "    \"status\": \"PENDENTE\",\n" +
-            "    \"tipo_pagamento\": \"BOLETO\",\n" +
-            "    \"usuario_criacao\": \"test.user\"\n" +
-            "}";
+    public void criarPedido() {
+        response = RestAssured.given()
+            .contentType("application/json")
+            .body(pedidoData)
+            .post("/pedidos");
+        CommonSteps.setResponse(response);
         
-        RequestBody body = RequestBody.create(
-                pedidoJson, 
-                MediaType.get("application/json; charset=utf-8")
-        );
-        
-        Request request = new Request.Builder()
-                .url(BASE_URL + "/pedidos")
-                .post(body)
-                .build();
-        
-        response = client.newCall(request).execute();
-    }
-
-    @E("o pedido deve ser criado com sucesso")
-    public void verificarPedidoCriado() throws IOException {
-        String responseBody = response.body().string();
-        JsonNode jsonNode = objectMapper.readTree(responseBody);
-        
-        Assertions.assertThat(jsonNode.has("id")).isTrue();
-        Assertions.assertThat(jsonNode.get("pedido_id").asText()).isEqualTo("PED999");
-        
-        // Armazena ID para testes posteriores
-        pedidoId = jsonNode.get("id").asText();
-    }
-
-    @Dado("que existe um pedido com codigo {string}")
-    public void criarPedidoExistente(String codigo) throws IOException {
-        // Primeiro verifica se já existe
-        Request getRequest = new Request.Builder()
-                .url(BASE_URL + "/pedidos")
-                .build();
-        
-        Response getResponse = client.newCall(getRequest).execute();
-        String responseBody = getResponse.body().string();
-        JsonNode pedidos = objectMapper.readTree(responseBody);
-        
-        // Procura pedido existente
-        for (JsonNode pedido : pedidos) {
-            if (pedido.get("pedido_id").asText().equals(codigo)) {
-                pedidoId = pedido.get("id").asText();
-                return;
-            }
+        if (response.getStatusCode() == 201) {
+            pedidoUuid = response.jsonPath().getString("id");
         }
-        
-        // Se não existe, cria um novo
-        String pedidoJson = "{\n" +
-            "    \"pedido_id\": \"" + codigo + "\",\n" +
-            "    \"data_pedido\": \"2024-12-10\",\n" +
-            "    \"fornecedor_id\": \"FORN001\",\n" +
-            "    \"valor_total_brl\": 1500.00,\n" +
-            "    \"status\": \"PENDENTE\"\n" +
-            "}";
-        
-        RequestBody body = RequestBody.create(
-                pedidoJson, 
-                MediaType.get("application/json; charset=utf-8")
-        );
-        
-        Request request = new Request.Builder()
-                .url(BASE_URL + "/pedidos")
-                .post(body)
-                .build();
-        
-        Response createResponse = client.newCall(request).execute();
-        String createResponseBody = createResponse.body().string();
-        JsonNode createdPedido = objectMapper.readTree(createResponseBody);
-        pedidoId = createdPedido.get("id").asText();
     }
-
-    @Quando("busco o pedido pelo ID")
-    public void buscarPedidoPorId() throws IOException {
-        Request request = new Request.Builder()
-                .url(BASE_URL + "/pedidos/" + pedidoId)
-                .build();
-        
-        response = client.newCall(request).execute();
+    
+    @Então("o pedido deve conter o pedido_id {string}")
+    public void verificarPedidoId(String pedidoId) {
+        assertEquals(pedidoId, response.jsonPath().getString("pedido_id"));
     }
-
-    @E("devo receber os dados do pedido")
-    public void verificarDadosPedido() throws IOException {
-        String responseBody = response.body().string();
-        JsonNode jsonNode = objectMapper.readTree(responseBody);
+    
+    @Dado("que existe um pedido com pedido_id {string}")
+    public void buscarPedidoPorId(String pedidoId) {
+        response = RestAssured.given()
+            .queryParam("pedido_id", pedidoId)
+            .get("/pedidos");
         
-        Assertions.assertThat(jsonNode.has("id")).isTrue();
-        Assertions.assertThat(jsonNode.has("pedido_id")).isTrue();
-        Assertions.assertThat(jsonNode.has("valor_total_brl")).isTrue();
+        if (response.jsonPath().getList("$").size() > 0) {
+            pedidoUuid = response.jsonPath().getString("[0].id");
+        }
     }
-
+    
+    @Quando("busco o pedido pelo pedido_id")
+    public void buscarPedido() {
+        response = RestAssured.get("/pedidos/" + pedidoUuid);
+        CommonSteps.setResponse(response);
+    }
+    
+    @Então("o pedido deve ter status {string}")
+    public void verificarStatusUnico(String status) {
+        assertEquals(status, response.jsonPath().getString("status"));
+    }
+    
+    @Então("o pedido deve ter valor_total_brl {double}")
+    public void verificarValorTotal(double valor) {
+        assertEquals(valor, response.jsonPath().getDouble("valor_total_brl"), 0.01);
+    }
+    
     @Quando("atualizo o status para {string}")
-    public void atualizarStatusPedido(String novoStatus) throws IOException {
-        String updateJson = "{\n" +
-            "    \"status\": \"" + novoStatus + "\"\n" +
-            "}";
+    public void atualizarStatus(String novoStatus) {
+        Map<String, Object> updateData = new HashMap<>();
+        updateData.put("status", novoStatus);
         
-        RequestBody body = RequestBody.create(
-                updateJson, 
-                MediaType.get("application/json; charset=utf-8")
-        );
-        
-        Request request = new Request.Builder()
-                .url(BASE_URL + "/pedidos/" + pedidoId)
-                .put(body)
-                .build();
-        
-        response = client.newCall(request).execute();
+        response = RestAssured.given()
+            .contentType("application/json")
+            .body(updateData)
+            .put("/pedidos/" + pedidoUuid);
+        CommonSteps.setResponse(response);
     }
-
-    @E("o pedido deve ter o status atualizado")
-    public void verificarStatusAtualizado() throws IOException {
-        String responseBody = response.body().string();
-        JsonNode jsonNode = objectMapper.readTree(responseBody);
-        
-        Assertions.assertThat(jsonNode.get("status").asText()).isEqualTo("EM_TRANSITO");
-    }
-
-    @Quando("excluo o pedido")
-    public void excluirPedido() throws IOException {
-        Request request = new Request.Builder()
-                .url(BASE_URL + "/pedidos/" + pedidoId)
-                .delete()
-                .build();
-        
-        response = client.newCall(request).execute();
-    }
-
-    @E("o pedido deve ser removido")
-    public void verificarPedidoRemovido() throws IOException {
-        // Verifica se pedido foi removido tentando buscá-lo
-        Request request = new Request.Builder()
-                .url(BASE_URL + "/pedidos/" + pedidoId)
-                .build();
-        
-        Response getResponse = client.newCall(request).execute();
-        Assertions.assertThat(getResponse.code()).isEqualTo(404);
-    }
-
-    @Dado("que existem pedidos com status {word} e {word}")
-    public void criarPedidosStatus(String status1, String status2) throws IOException {
-        // Cria pedido com primeiro status
-        criarPedidoComStatus("STAT1", status1);
-        // Cria pedido com segundo status
-        criarPedidoComStatus("STAT2", status2);
-    }
-
-    @Quando("filtro pedidos pelo status {word}")
-    public void filtrarPorStatus(String status) throws IOException {
-        Request request = new Request.Builder()
-                .url(BASE_URL + "/pedidos?status=" + status)
-                .build();
-        
-        response = client.newCall(request).execute();
-    }
-
-    @Então("devo receber apenas pedidos com status {word}")
-    public void verificarFiltroStatus(String status) throws IOException {
-        String responseBody = response.body().string();
-        JsonNode pedidos = objectMapper.readTree(responseBody);
-        
-        for (JsonNode pedido : pedidos) {
-            Assertions.assertThat(pedido.get("status").asText()).isEqualTo(status);
-        }
-    }
-
+    
     @Quando("solicito as estatísticas dos pedidos")
-    public void solicitarEstatisticas() throws IOException {
-        Request request = new Request.Builder()
-                .url(BASE_URL + "/pedidos/stats/resumo")
-                .build();
-        
-        response = client.newCall(request).execute();
+    public void solicitarEstatisticas() {
+        response = RestAssured.get("/pedidos/stats");
+        CommonSteps.setResponse(response);
     }
-
-    @E("devo receber resumo por status")
-    public void verificarResumoStatus() throws IOException {
-        String responseBody = response.body().string();
-        JsonNode stats = objectMapper.readTree(responseBody);
-        
-        Assertions.assertThat(stats.isArray()).isTrue();
-        if (stats.size() > 0) {
-            JsonNode firstStat = stats.get(0);
-            Assertions.assertThat(firstStat.has("status")).isTrue();
-            Assertions.assertThat(firstStat.has("quantidade")).isTrue();
-            Assertions.assertThat(firstStat.has("valor_total")).isTrue();
-        }
+    
+    @Então("a resposta deve conter contadores por status")
+    public void verificarEstatisticas() {
+        assertNotNull(response.jsonPath().get("total"));
     }
-
-    @Quando("acesso o endpoint de saúde dos pedidos")
-    public void acessarEndpointSaudePedidos() throws IOException {
-        Request request = new Request.Builder()
-                .url(BASE_URL + "/status")
-                .build();
-        
-        response = client.newCall(request).execute();
+    
+    @Quando("filtro pedidos pelo tipo_pagamento {string}")
+    public void filtrarPorTipoPagamento(String tipo) {
+        response = RestAssured.given()
+            .queryParam("tipo_pagamento", tipo)
+            .get("/pedidos");
+        CommonSteps.setResponse(response);
     }
-
-    @Então("devo receber status {int}")
-    public void verificarStatus(int expectedStatus) {
-        Assertions.assertThat(response.code()).isEqualTo(expectedStatus);
-    }
-
-    @Então("o tempo de resposta deve ser menor que {int} segundos")
-    public void verificarTempoResposta(int maxSeconds) {
-        long endTime = System.currentTimeMillis();
-        long responseTime = endTime - startTime;
-        
-        Assertions.assertThat(responseTime).isLessThan(maxSeconds * 1000L);
-    }
-
-    @E("devo receber confirmação de que o serviço está saudável")
-    public void verificarServicoSaudavel() throws IOException {
-        String responseBody = response.body().string();
-        JsonNode jsonNode = objectMapper.readTree(responseBody);
-        
-        Assertions.assertThat(jsonNode.get("status").asText()).isEqualTo("healthy");
-        Assertions.assertThat(jsonNode.get("service").asText()).isEqualTo("pedidos");
-    }
-
-    // Método auxiliar
-    private void criarPedidoComStatus(String codigo, String status) throws IOException {
-        String pedidoJson = "{\n" +
-            "    \"pedido_id\": \"" + codigo + "\",\n" +
-            "    \"data_pedido\": \"2024-12-10\",\n" +
-            "    \"fornecedor_id\": \"FORN001\",\n" +
-            "    \"valor_total_brl\": 1000.00,\n" +
-            "    \"status\": \"" + status + "\"\n" +
-            "}";
-        
-        RequestBody body = RequestBody.create(
-                pedidoJson, 
-                MediaType.get("application/json; charset=utf-8")
-        );
-        
-        Request request = new Request.Builder()
-                .url(BASE_URL + "/pedidos")
-                .post(body)
-                .build();
-        
-        client.newCall(request).execute();
+    
+    @Então("todos os pedidos devem ter tipo_pagamento {string}")
+    public void verificarTipoPagamento(String tipo) {
+        response.then().body("tipo_pagamento", everyItem(equalTo(tipo)));
     }
 }
