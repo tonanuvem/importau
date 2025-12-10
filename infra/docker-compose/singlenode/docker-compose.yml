@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Banco de dados PostgreSQL para produtos
+  # Bancos de dados
   produtos-db:
     image: postgres:15-alpine
     container_name: produtos-db
@@ -21,7 +21,6 @@ services:
       timeout: 10s
       retries: 3
 
-  # Banco de dados PostgreSQL para pedidos
   pedidos-db:
     image: postgres:15-alpine
     container_name: pedidos-db
@@ -41,7 +40,83 @@ services:
       timeout: 10s
       retries: 3
 
-  # Microsserviço de Produtos
+  pagamentos-db:
+    image: postgres:15-alpine
+    container_name: pagamentos-db
+    environment:
+      POSTGRES_DB: pagamentos_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - pagamentos_db_data:/var/lib/postgresql/data
+    networks:
+      - importau-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  fornecedores-db:
+    image: postgres:15-alpine
+    container_name: fornecedores-db
+    environment:
+      POSTGRES_DB: fornecedores_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - fornecedores_db_data:/var/lib/postgresql/data
+    networks:
+      - importau-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  emprestimos-db:
+    image: postgres:15-alpine
+    container_name: emprestimos-db
+    environment:
+      POSTGRES_DB: emprestimos_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"
+    volumes:
+      - emprestimos_db_data:/var/lib/postgresql/data
+    networks:
+      - importau-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  cambio-db:
+    image: postgres:15-alpine
+    container_name: cambio-db
+    environment:
+      POSTGRES_DB: cambio_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5437:5432"
+    volumes:
+      - cambio_db_data:/var/lib/postgresql/data
+    networks:
+      - importau-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Microserviços
   produtos-service:
     build:
       context: ../../../backend/produtos
@@ -59,15 +134,9 @@ services:
     networks:
       - importau-network
     volumes:
-      - /home/ubuntu/environment/aidev/openfinance/csv_exports:/app/csv_exports
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/status"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - ../../../csv_exports:/app/csv_exports
     restart: unless-stopped
 
-  # Microsserviço de Pedidos
   pedidos-service:
     build:
       context: ../../../backend/pedidos
@@ -85,17 +154,94 @@ services:
     networks:
       - importau-network
     volumes:
-      - /home/ubuntu/environment/aidev/openfinance/csv_exports:/app/csv_exports
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/status"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - ../../../csv_exports:/app/csv_exports
+    restart: unless-stopped
+
+  pagamentos-service:
+    build:
+      context: ../../../backend/pagamentos
+      dockerfile: Dockerfile
+    container_name: pagamentos-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://pagamentos-db:5432/pagamentos_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SERVER_PORT: 8003
+    ports:
+      - "8003:8003"
+    depends_on:
+      pagamentos-db:
+        condition: service_healthy
+    networks:
+      - importau-network
+    restart: unless-stopped
+
+  fornecedores-service:
+    build:
+      context: ../../../backend/fornecedores
+      dockerfile: Dockerfile
+    container_name: fornecedores-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://fornecedores-db:5432/fornecedores_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SERVER_PORT: 8004
+    ports:
+      - "8004:8004"
+    depends_on:
+      fornecedores-db:
+        condition: service_healthy
+    networks:
+      - importau-network
+    restart: unless-stopped
+
+  emprestimos-service:
+    build:
+      context: ../../../backend/emprestimos
+      dockerfile: Dockerfile
+    container_name: emprestimos-service
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@emprestimos-db:5432/emprestimos_db
+      HOST: 0.0.0.0
+      PORT: 8005
+    ports:
+      - "8005:8005"
+    depends_on:
+      emprestimos-db:
+        condition: service_healthy
+    networks:
+      - importau-network
+    volumes:
+      - ../../../csv_exports:/app/csv_exports
+    restart: unless-stopped
+
+  cambio-service:
+    build:
+      context: ../../../backend/cambio
+      dockerfile: Dockerfile
+    container_name: cambio-service
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@cambio-db:5432/cambio_db
+      HOST: 0.0.0.0
+      PORT: 8006
+    ports:
+      - "8006:8006"
+    depends_on:
+      cambio-db:
+        condition: service_healthy
+    networks:
+      - importau-network
+    volumes:
+      - ../../../csv_exports:/app/csv_exports
     restart: unless-stopped
 
 volumes:
   produtos_db_data:
   pedidos_db_data:
+  pagamentos_db_data:
+  fornecedores_db_data:
+  emprestimos_db_data:
+  cambio_db_data:
 
 networks:
   importau-network:
