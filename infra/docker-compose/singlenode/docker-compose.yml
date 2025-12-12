@@ -165,9 +165,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://pagamentos-db:5432/pagamentos_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      SERVER_PORT: 8003
+      SERVER_PORT: 8083
     ports:
-      - "8003:8003"
+      - "8083:8083"
     depends_on:
       pagamentos-db:
         condition: service_healthy
@@ -184,9 +184,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://fornecedores-db:5432/fornecedores_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      SERVER_PORT: 8004
+      SERVER_PORT: 8084
     ports:
-      - "8004:8004"
+      - "8084:8084"
     depends_on:
       fornecedores-db:
         condition: service_healthy
@@ -202,9 +202,9 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@emprestimos-db:5432/emprestimos_db
       HOST: 0.0.0.0
-      PORT: 8005
+      PORT: 8085
     ports:
-      - "8005:8005"
+      - "8085:8085"
     depends_on:
       emprestimos-db:
         condition: service_healthy
@@ -222,9 +222,9 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@cambio-db:5432/cambio_db
       HOST: 0.0.0.0
-      PORT: 8006
+      PORT: 8086
     ports:
-      - "8006:8006"
+      - "8086:8086"
     depends_on:
       cambio-db:
         condition: service_healthy

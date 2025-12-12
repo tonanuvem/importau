@@ -24,18 +24,21 @@ def override_get_db():
 app.dependency_overrides[get_db] = override_get_db
 
 # Setup do banco de teste
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function", autouse=True)
 def setup_database():
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
 
 @pytest.fixture
-def client(setup_database):
+def client():
     return TestClient(app)
 
 @pytest.fixture
 def db_session():
+    from main import Base
+    Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
     try:
         yield db
