@@ -15,7 +15,7 @@ const { v4: uuidv4 } = require('uuid');
 // Configurações via variáveis de ambiente
 const PORT = process.env.PORT || 8002;
 const HOST = process.env.HOST || '0.0.0.0';
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5433/pedidos_db';
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@pedidos-db:5432/pedidos_db';
 
 // Configuração do banco de dados
 const pool = new Pool({
@@ -352,12 +352,6 @@ const swaggerOptions = {
       version: '1.0.0',
       description: 'API para gestão de pedidos - IMPORTAÚ Open Finance',
     },
-    servers: [
-      {
-        url: `http://0.0.0.0:${PORT}`,
-        description: 'Servidor de desenvolvimento',
-      },
-    ],
   },
   apis: ['./server.js'],
 };
