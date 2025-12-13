@@ -4,7 +4,7 @@ import io.cucumber.java.pt.*;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import static org.hamcrest.Matchers.*;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 import java.util.Map;
 import java.util.HashMap;
 

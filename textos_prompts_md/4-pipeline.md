@@ -112,6 +112,6 @@ act workflow_dispatch
 
 ## 💬 Instrução para o Amazon Q Developer
 
-> Com base nesta descrição (`pipeline.md`), gere um arquivo de pipeline CI/CD YAML que atenda aos requisitos acima, priorizando simplicidade e compatibilidade com execução local (`act`) e com AWS CodeBuild.
+> Com base nesta descrição (`4-pipeline.md`), gere um arquivo de pipeline CI/CD YAML que atenda aos requisitos acima, priorizando simplicidade e compatibilidade com execução local (`act`) e com AWS CodeBuild.
 
 > Efetuar melhorias nos códigos para criar, validar e garantir a executação dos testes unitários, integração e de interface do usuário (usando selenium). Executar e validar se os testes estão funcionando.

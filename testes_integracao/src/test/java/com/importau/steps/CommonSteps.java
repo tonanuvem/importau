@@ -3,7 +3,7 @@ package com.importau.steps;
 import io.cucumber.java.pt.*;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class CommonSteps {
     
