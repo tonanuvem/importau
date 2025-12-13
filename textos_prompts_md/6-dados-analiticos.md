@@ -15,7 +15,7 @@ Verifique qual o NOME_USUARIO que está logado na aws cli.
 Como convenção, considerar que o bucket S3 no Lakehouse deste projeto é s3://importau-lakehouse-NOME_USUARIO/.
 ```
 /importau
-  /infra
+  /datapipeline
       /AWSStepFunctions
       /Glue
   /scripts
