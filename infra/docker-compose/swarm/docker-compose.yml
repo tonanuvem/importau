@@ -1,0 +1,265 @@
+version: '3.8'
+
+services:
+  # Bancos de dados
+  produtos-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: produtos_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - produtos_db_data:/var/lib/postgresql/data
+    networks:
+      - importau-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  pedidos-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: pedidos_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - pedidos_db_data:/var/lib/postgresql/data
+    networks:
+      - importau-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  pagamentos-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: pagamentos_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - pagamentos_db_data:/var/lib/postgresql/data
+    networks:
+      - importau-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  fornecedores-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: fornecedores_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - fornecedores_db_data:/var/lib/postgresql/data
+    networks:
+      - importau-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  emprestimos-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: emprestimos_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"
+    volumes:
+      - emprestimos_db_data:/var/lib/postgresql/data
+    networks:
+      - importau-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  cambio-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: cambio_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5437:5432"
+    volumes:
+      - cambio_db_data:/var/lib/postgresql/data
+    networks:
+      - importau-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  # Microserviços
+  produtos-service:
+    image: importau/produtos-service:latest
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@produtos-db:5432/produtos_db
+      HOST: 0.0.0.0
+      PORT: 8001
+    ports:
+      - "8001:8001"
+    networks:
+      - importau-network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  pedidos-service:
+    image: importau/pedidos-service:latest
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@pedidos-db:5432/pedidos_db
+      HOST: 0.0.0.0
+      PORT: 8002
+    ports:
+      - "8002:8002"
+    networks:
+      - importau-network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  pagamentos-service:
+    image: importau/pagamentos-service:latest
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://pagamentos-db:5432/pagamentos_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SERVER_PORT: 8083
+    ports:
+      - "8083:8083"
+    networks:
+      - importau-network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  fornecedores-service:
+    image: importau/fornecedores-service:latest
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://fornecedores-db:5432/fornecedores_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SERVER_PORT: 8084
+    ports:
+      - "8084:8084"
+    networks:
+      - importau-network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  emprestimos-service:
+    image: importau/emprestimos-service:latest
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@emprestimos-db:5432/emprestimos_db
+      HOST: 0.0.0.0
+      PORT: 8085
+    ports:
+      - "8085:8085"
+    networks:
+      - importau-network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  cambio-service:
+    image: importau/cambio-service:latest
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@cambio-db:5432/cambio_db
+      HOST: 0.0.0.0
+      PORT: 8086
+    ports:
+      - "8086:8086"
+    networks:
+      - importau-network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+volumes:
+  produtos_db_data:
+  pedidos_db_data:
+  pagamentos_db_data:
+  fornecedores_db_data:
+  emprestimos_db_data:
+  cambio_db_data:
+
+networks:
+  importau-network:
+    driver: overlay
+    attachable: true
