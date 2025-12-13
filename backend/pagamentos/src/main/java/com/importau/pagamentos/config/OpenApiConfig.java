@@ -3,21 +3,14 @@ package com.importau.pagamentos.config;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.Contact;
-import io.swagger.v3.oas.models.servers.Server;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.List;
 
 /**
  * Configuração do OpenAPI/Swagger para documentação da API
  */
 @Configuration
 public class OpenApiConfig {
-
-    @Value("${server.port:8080}")
-    private String serverPort;
 
     @Bean
     public OpenAPI customOpenAPI() {
@@ -28,14 +21,6 @@ public class OpenApiConfig {
                         .version("1.0.0")
                         .contact(new Contact()
                                 .name("Equipe IMPORTAÚ")
-                                .email("dev@importau.com")))
-                .servers(List.of(
-                        new Server()
-                                .url("http://0.0.0.0:" + serverPort)
-                                .description("Servidor de Desenvolvimento"),
-                        new Server()
-                                .url("http://localhost:" + serverPort)
-                                .description("Servidor Local")
-                ));
+                                .email("dev@importau.com")));
     }
 }
