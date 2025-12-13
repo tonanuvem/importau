@@ -95,16 +95,16 @@ echo "Testando Câmbio..."
 docker exec cambio-service pytest /app/tests/ -v > "$REPORT_DIR/test-cambio.log" 2>&1 || echo "✗ Câmbio: testes falharam"
 
 echo ""
-echo "5. EXECUTANDO TESTES DE INTEGRAÇÃO (CUCUMBER)"
+echo "5. EXECUTANDO PIPELINE CI/CD (ACT)"
 echo "=========================================="
-cd testes_integracao
-mvn clean test > "$REPORT_DIR/test-integracao.log" 2>&1
-INTEGRATION_RESULT=$?
+cd /home/ubuntu/environment/aidev/openfinance/importau
+act workflow_dispatch --container-architecture linux/amd64 > "$REPORT_DIR/pipeline-act.log" 2>&1
+PIPELINE_RESULT=$?
 
-if [ $INTEGRATION_RESULT -eq 0 ]; then
-    echo "✓ Testes de integração: SUCESSO"
+if [ $PIPELINE_RESULT -eq 0 ]; then
+    echo "✓ Pipeline CI/CD: SUCESSO"
 else
-    echo "✗ Testes de integração: FALHOU"
+    echo "✗ Pipeline CI/CD: FALHOU"
     FAILED=$((FAILED + 1))
 fi
 
@@ -131,7 +131,7 @@ $(cat "$REPORT_DIR/connectivity.log")
 
 ## Status dos Testes
 - Testes Unitários: Ver logs individuais
-- Testes de Integração: $([ $INTEGRATION_RESULT -eq 0 ] && echo "✓ SUCESSO" || echo "✗ FALHOU")
+- Pipeline CI/CD (ACT): $([ $PIPELINE_RESULT -eq 0 ] && echo "✓ SUCESSO" || echo "✗ FALHOU")
 
 ## Logs Completos
 - Conectividade: connectivity.log
@@ -141,7 +141,7 @@ $(cat "$REPORT_DIR/connectivity.log")
 - Fornecedores: test-fornecedores.log
 - Empréstimos: test-emprestimos.log
 - Câmbio: test-cambio.log
-- Integração: test-integracao.log
+- Pipeline CI/CD: pipeline-act.log
 EOF
 
 echo ""
