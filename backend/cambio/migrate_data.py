@@ -4,7 +4,7 @@ Script para migrar dados do CSV para o banco de dados
 import csv
 import requests
 
-API_URL = "http://localhost:8086/api/v1/cambio"
+API_URL = "http://cambio-service:8086/api/v1/cambio"
 CSV_PATH = "/home/ubuntu/environment/aidev/openfinance/csv_exports/cambio.csv"
 
 def migrate_data():

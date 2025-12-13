@@ -76,6 +76,13 @@
             <version>${jackson.version}</version>
         </dependency>
 
+        <!-- PostgreSQL Driver for database testing -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.7.1</version>
+        </dependency>
+
         <!-- Logging -->
         <dependency>
             <groupId>org.slf4j</groupId>

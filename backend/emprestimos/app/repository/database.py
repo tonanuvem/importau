@@ -9,7 +9,7 @@ from .models import Base
 # Configurações do banco de dados via variáveis de ambiente
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://emprestimos_user:emprestimos_pass@localhost:5436/emprestimos_db"
+    "postgresql://postgres:postgres@emprestimos-db:5432/emprestimos_db"
 )
 
 # Engine do SQLAlchemy

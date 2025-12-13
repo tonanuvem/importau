@@ -15,7 +15,7 @@ from datetime import datetime
 import csv
 
 # Configurações via variáveis de ambiente
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/produtos_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@produtos-db:5432/produtos_db")
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "8001"))
 

@@ -8,7 +8,7 @@ from .models import Base
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://cambio_user:cambio_pass@localhost:5437/cambio_db"
+    "postgresql://postgres:postgres@cambio-db:5432/cambio_db"
 )
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)

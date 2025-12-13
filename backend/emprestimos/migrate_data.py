@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 
 # URL da API
-API_URL = "http://localhost:8085/api/v1/emprestimos"
+API_URL = "http://emprestimos-service:8085/api/v1/emprestimos"
 
 # Caminho do CSV
 CSV_PATH = "/home/ubuntu/environment/aidev/openfinance/csv_exports/emprestimos.csv"
